@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"gin-learning/routers"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -16,6 +17,8 @@ func main() {
 			"message": "Hello, Gin!",
 		})
 	})
+
+	routers.UserRouter(router)
 
 	err := router.Run(":8000")
 	if err != nil {
