@@ -1,27 +1,21 @@
 package main
 
 import (
+	config "gin_app/Configs"
 	models "gin_app/Models"
 	routers "gin_app/Routers"
-	"gin_app/config"
-	"log"
 
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 )
 
 func init() {
+	config.LoadEnv()
 	config.ConnectDB()
 	config.DB.AutoMigrate(&models.User{})
 }
 func main() {
 
 	router := gin.Default()
-	err := godotenv.Load(".env")
-
-	if err != nil {
-		log.Println("No .env file found")
-	}
 
 	routers.UserRouter(router)
 
