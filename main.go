@@ -1,9 +1,9 @@
 package main
 
 import (
-	config "gin_app/Configs"
-	models "gin_app/Models"
-	routers "gin_app/Routers"
+	"gin_app/config"
+	"gin_app/models"
+	"gin_app/routers"
 
 	"github.com/gin-gonic/gin"
 )
@@ -18,7 +18,7 @@ func main() {
 	router := gin.Default()
 
 	routers.UserRouter(router)
-
+	routers.AuthRouter(router)
 	router.Run(":8000")
 
 }
