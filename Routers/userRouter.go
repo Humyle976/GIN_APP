@@ -1,18 +1,14 @@
 package routers
 
 import (
-	"net/http"
+	"gin_app/controllers"
 
 	"github.com/gin-gonic/gin"
 )
 
 func UserRouter(router *gin.Engine) {
-	user := router.Group("/user")
+	users := router.Group("/users")
 	{
-		user.GET("/", func(ctx *gin.Context) {
-			ctx.JSON(http.StatusAccepted, gin.H{
-				"message": "user",
-			})
-		})
+		users.GET("/", controllers.GetAllUsers)
 	}
 }
