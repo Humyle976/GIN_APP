@@ -5,8 +5,11 @@ import (
 	"gin_app/dto"
 	"gin_app/models"
 	"net/http"
+	"os"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -105,6 +108,22 @@ func Login(c *gin.Context) {
 		return
 	}
 
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub": existingUser.ID,
+		"exp": time.Now().Add(time.Hour * 24 * 30).Unix(),
+	})
+	tokenString, err := token.SignedString([]byte(os.Getenv("SECRET")))
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  http.StatusInternalServerError,
+			"message": "Internal Server Error",
+		})
+		return
+	}
+
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie("Authorization", tokenString, 3600*24*30, "", "", true, true)
 	c.JSON(http.StatusOK, gin.H{
 		"status":  http.StatusOK,
 		"message": "Successfully Logged In",
@@ -114,4 +133,70 @@ func Login(c *gin.Context) {
 		},
 	})
 
+}
+
+func Logout(c *gin.Context) {
+	c.SetCookie("Authorization", "", -1, "", "", true, true)
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":  http.StatusOK,
+		"message": "Successfully Logged Out",
+	})
+}
+
+func Authenticate(c *gin.Context) {
+	tokenString, err := c.Cookie("Authorization")
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"status":  http.StatusUnauthorized,
+			"message": "You are not authorized to do that",
+		})
+		c.Abort()
+		return
+	}
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		return []byte(os.Getenv("SECRET")), nil
+	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"status":  http.StatusUnauthorized,
+			"message": "You are not authorized to do that",
+		})
+		c.Abort()
+		return
+	}
+
+	if claims, ok := token.Claims.(jwt.MapClaims); ok {
+		if float64(time.Now().Unix()) > claims["exp"].(float64) {
+			c.SetCookie("Authorization", "", -1, "", "", true, true)
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"status":  http.StatusUnauthorized,
+				"message": "You are not authorized to do that",
+			})
+			c.Abort()
+			return
+		}
+
+		var user models.User
+		config.DB.Select("id", "username").Find(&user, claims["sub"])
+
+		if user.ID == 0 {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"status":  http.StatusUnauthorized,
+				"message": "You are not authorized to do that",
+			})
+			c.Abort()
+			return
+		}
+
+		c.Set("user", user)
+		c.Next()
+	} else {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"status":  http.StatusUnauthorized,
+			"message": "You are not authorized to do that",
+		})
+		c.Abort()
+		return
+	}
 }

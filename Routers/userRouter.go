@@ -9,6 +9,6 @@ import (
 func UserRouter(router *gin.Engine) {
 	users := router.Group("/users")
 	{
-		users.GET("/", controllers.GetAllUsers)
+		users.GET("/", controllers.Authenticate, controllers.GetAllUsers)
 	}
 }
