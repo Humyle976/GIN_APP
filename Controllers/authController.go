@@ -93,8 +93,8 @@ func Login(c *gin.Context) {
 	result := config.DB.Where("email = ? OR username = ?", loginUser.LoginField, loginUser.LoginField).Find(&existingUser)
 
 	if result.RowsAffected == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status":  http.StatusBadRequest,
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"status":  http.StatusUnauthorized,
 			"message": "Wrong Email/Username Or Password",
 		})
 		return
@@ -103,8 +103,8 @@ func Login(c *gin.Context) {
 	err = bcrypt.CompareHashAndPassword([]byte(existingUser.Password), []byte(loginUser.Password))
 
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status":  http.StatusBadRequest,
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"status":  http.StatusUnauthorized,
 			"message": "Wrong Email/Username Or Password",
 		})
 		return
@@ -145,9 +145,9 @@ func CheckLoginStatus(c *gin.Context) {
 		claims, err := helpers.VerifyJWT(tokenString)
 
 		if err != nil {
-			c.JSON(http.StatusOK, gin.H{
-				"status":  http.StatusOK,
-				"message": "Invalid token",
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"status":  http.StatusUnauthorized,
+				"message": "Invalid or expired token",
 			})
 			return
 		} else {
@@ -162,8 +162,8 @@ func CheckLoginStatus(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"status":  http.StatusOK,
+	c.JSON(http.StatusUnauthorized, gin.H{
+		"status":  http.StatusUnauthorized,
 		"message": "Not Logged In",
 	})
 }
@@ -172,8 +172,8 @@ func Logout(c *gin.Context) {
 
 	token, err := c.Cookie("Authorization")
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"status":  http.StatusOK,
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"status":  http.StatusUnauthorized,
 			"message": "You are not logged in",
 		})
 		return
@@ -184,9 +184,9 @@ func Logout(c *gin.Context) {
 	if err != nil {
 		c.SetCookie("Authorization", "", -1, "", "", true, true)
 
-		c.JSON(http.StatusOK, gin.H{
-			"status":  http.StatusOK,
-			"message": "Logged Out",
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"status":  http.StatusUnauthorized,
+			"message": "Invalid token",
 		})
 		return
 	}
@@ -203,8 +203,8 @@ func Logout(c *gin.Context) {
 
 	_, err = pipe.Exec(ctx)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"status":  http.StatusOK,
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  http.StatusInternalServerError,
 			"message": "Could not log out",
 		})
 
