@@ -11,6 +11,7 @@ func AuthRouter(router *gin.Engine) {
 	{
 		auth.POST("/signup", controllers.SignUp)
 		auth.POST("/login", controllers.Login)
+		auth.GET("/login", controllers.CheckLoginStatus)
 		auth.POST("/logout", controllers.Logout)
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"gin_app/config"
 	"gin_app/models"
 	"gin_app/routers"
+	"os"
 
 	"github.com/gin-gonic/gin"
 )
@@ -12,6 +13,7 @@ func init() {
 	config.LoadEnv()
 	config.ConnectDB()
 	config.DB.AutoMigrate(&models.User{})
+	config.InitRedisClient()
 }
 func main() {
 
@@ -19,6 +21,6 @@ func main() {
 
 	routers.UserRouter(router)
 	routers.AuthRouter(router)
-	router.Run(":8000")
+	router.Run(os.Getenv("Address") + ":" + os.Getenv("PORT"))
 
 }

@@ -1,8 +1,10 @@
 package controllers
 
 import (
+	"context"
 	"gin_app/config"
 	"gin_app/dto"
+	"gin_app/helpers"
 	"gin_app/models"
 	"net/http"
 	"os"
@@ -112,6 +114,7 @@ func Login(c *gin.Context) {
 		"sub": existingUser.ID,
 		"exp": time.Now().Add(time.Hour * 24 * 30).Unix(),
 	})
+
 	tokenString, err := token.SignedString([]byte(os.Getenv("SECRET")))
 
 	if err != nil {
@@ -135,7 +138,78 @@ func Login(c *gin.Context) {
 
 }
 
+func CheckLoginStatus(c *gin.Context) {
+	tokenString, _ := c.Cookie("Authorization")
+
+	if tokenString != "" {
+		claims, err := helpers.VerifyJWT(tokenString)
+
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"status":  http.StatusOK,
+				"message": "Invalid token",
+			})
+			return
+		} else {
+			c.JSON(http.StatusOK, gin.H{
+				"status":  http.StatusOK,
+				"message": "Already logged in",
+				"user": gin.H{
+					"ID": claims["sub"],
+				},
+			})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":  http.StatusOK,
+		"message": "Not Logged In",
+	})
+}
+
 func Logout(c *gin.Context) {
+
+	token, err := c.Cookie("Authorization")
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"status":  http.StatusOK,
+			"message": "You are not logged in",
+		})
+		return
+	}
+
+	claims, err := helpers.VerifyJWT(token)
+
+	if err != nil {
+		c.SetCookie("Authorization", "", -1, "", "", true, true)
+
+		c.JSON(http.StatusOK, gin.H{
+			"status":  http.StatusOK,
+			"message": "Logged Out",
+		})
+		return
+	}
+
+	pipe := config.Client.Pipeline()
+	ctx := context.Background()
+
+	pipe.SAdd(ctx, "auth:tokens:blacklist", token)
+
+	expTime := claims["exp"].(float64) - float64(time.Now().Unix())
+	ttl := time.Duration(expTime) * time.Second
+
+	pipe.Expire(ctx, "auth:tokens:blacklist", ttl)
+
+	_, err = pipe.Exec(ctx)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"status":  http.StatusOK,
+			"message": "Could not log out",
+		})
+
+		c.Abort()
+	}
 	c.SetCookie("Authorization", "", -1, "", "", true, true)
 
 	c.JSON(http.StatusOK, gin.H{
@@ -154,9 +228,9 @@ func Authenticate(c *gin.Context) {
 		c.Abort()
 		return
 	}
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		return []byte(os.Getenv("SECRET")), nil
-	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
+
+	claims, err := helpers.VerifyJWT(tokenString)
+
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"status":  http.StatusUnauthorized,
@@ -166,32 +240,10 @@ func Authenticate(c *gin.Context) {
 		return
 	}
 
-	if claims, ok := token.Claims.(jwt.MapClaims); ok {
-		if float64(time.Now().Unix()) > claims["exp"].(float64) {
-			c.SetCookie("Authorization", "", -1, "", "", true, true)
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"status":  http.StatusUnauthorized,
-				"message": "You are not authorized to do that",
-			})
-			c.Abort()
-			return
-		}
+	var user models.User
+	config.DB.Select("id", "username").Find(&user, claims["sub"])
 
-		var user models.User
-		config.DB.Select("id", "username").Find(&user, claims["sub"])
-
-		if user.ID == 0 {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"status":  http.StatusUnauthorized,
-				"message": "You are not authorized to do that",
-			})
-			c.Abort()
-			return
-		}
-
-		c.Set("user", user)
-		c.Next()
-	} else {
+	if user.ID == 0 {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"status":  http.StatusUnauthorized,
 			"message": "You are not authorized to do that",
@@ -199,4 +251,8 @@ func Authenticate(c *gin.Context) {
 		c.Abort()
 		return
 	}
+
+	c.Set("user", user)
+	c.Next()
+
 }
