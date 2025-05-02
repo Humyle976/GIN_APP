@@ -1,6 +1,7 @@
 package config
 
 import (
+	"gin_app/models"
 	"log"
 	"os"
 
@@ -10,7 +11,7 @@ import (
 
 var DB *gorm.DB
 
-func ConnectDB() {
+func ConnectPostgres() {
 	dsn := os.Getenv("POSTGRES_DSN")
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
@@ -19,4 +20,8 @@ func ConnectDB() {
 		log.Println("Connected To The Database")
 	}
 	DB = db
+}
+
+func Migrate() {
+	DB.AutoMigrate(&models.User{}, &models.Post{})
 }

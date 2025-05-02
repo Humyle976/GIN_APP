@@ -16,10 +16,10 @@ import (
 )
 
 func SignUp(c *gin.Context) {
-	var user models.User
+	userSignUpRequestDTO := dto.UserSignUpRequestDTO()
 	var existingUser models.User
 
-	err := c.ShouldBindJSON(&user)
+	err := c.ShouldBindJSON(userSignUpRequestDTO)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -29,7 +29,7 @@ func SignUp(c *gin.Context) {
 		return
 	}
 
-	result := config.DB.Where("email = ?", user.Email).First(&existingUser)
+	result := config.DB.Where("email = ?", userSignUpRequestDTO.Email).First(&existingUser)
 
 	if result.RowsAffected > 0 {
 		c.JSON(http.StatusConflict, gin.H{
@@ -39,7 +39,7 @@ func SignUp(c *gin.Context) {
 		return
 	}
 
-	result = config.DB.Where("username = ?", user.Username).First(&existingUser)
+	result = config.DB.Where("username = ?", userSignUpRequestDTO.Name).First(&existingUser)
 	if result.RowsAffected > 0 {
 		c.JSON(http.StatusConflict, gin.H{
 			"status":  http.StatusConflict,
@@ -48,7 +48,7 @@ func SignUp(c *gin.Context) {
 		return
 	}
 
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(userSignUpRequestDTO.Password), bcrypt.DefaultCost)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status":  http.StatusInternalServerError,
@@ -56,7 +56,13 @@ func SignUp(c *gin.Context) {
 		})
 		return
 	}
-	user.Password = string(hashedPassword)
+
+	user := models.User{
+		Username: userSignUpRequestDTO.Name,
+		Email:    userSignUpRequestDTO.Email,
+		Password: string(hashedPassword),
+		Age:      userSignUpRequestDTO.Age,
+	}
 
 	err = config.DB.Create(&user).Error
 	if err != nil {
@@ -67,21 +73,21 @@ func SignUp(c *gin.Context) {
 		return
 	}
 
-	userDTO := dto.UserAuthSignUpResponseDTO(user)
+	userSignUpResponseDTO := dto.UserSignUpResponseDTO(user)
 
 	c.JSON(http.StatusCreated, gin.H{
 		"status":  http.StatusCreated,
 		"message": "User created successfully",
-		"user":    userDTO,
+		"user":    userSignUpResponseDTO,
 	})
 }
 
 func Login(c *gin.Context) {
 
-	var loginUser = dto.UserAuthLoginRequestDTO()
+	userLoginRequestDTO := dto.UserLoginRequestDTO()
 
 	var existingUser models.User
-	err := c.ShouldBindJSON(&loginUser)
+	err := c.ShouldBindJSON(userLoginRequestDTO)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"status":  http.StatusBadRequest,
@@ -90,7 +96,7 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	result := config.DB.Where("email = ? OR username = ?", loginUser.LoginField, loginUser.LoginField).Find(&existingUser)
+	result := config.DB.Where("email = ? OR username = ?", userLoginRequestDTO.LoginField, userLoginRequestDTO.LoginField).Find(&existingUser)
 
 	if result.RowsAffected == 0 {
 		c.JSON(http.StatusUnauthorized, gin.H{
@@ -100,7 +106,7 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(existingUser.Password), []byte(loginUser.Password))
+	err = bcrypt.CompareHashAndPassword([]byte(existingUser.Password), []byte(userLoginRequestDTO.Password))
 
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{
@@ -127,13 +133,12 @@ func Login(c *gin.Context) {
 
 	c.SetSameSite(http.SameSiteLaxMode)
 	c.SetCookie("Authorization", tokenString, 3600*24*30, "", "", true, true)
+
+	userLoginResponseDTO := dto.UserLoginResponseDTO(existingUser.ID, userLoginRequestDTO.LoginField)
 	c.JSON(http.StatusOK, gin.H{
 		"status":  http.StatusOK,
 		"message": "Successfully Logged In",
-		"user": gin.H{
-			"ID":         existingUser.ID,
-			"LoginField": loginUser.LoginField,
-		},
+		"user":    userLoginResponseDTO,
 	})
 
 }
