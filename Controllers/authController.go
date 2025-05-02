@@ -145,6 +145,7 @@ func CheckLoginStatus(c *gin.Context) {
 		claims, err := helpers.VerifyJWT(tokenString)
 
 		if err != nil {
+			c.SetCookie("Authorization", "", -1, "", "", true, true)
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"status":  http.StatusUnauthorized,
 				"message": "Invalid or expired token",
@@ -153,7 +154,7 @@ func CheckLoginStatus(c *gin.Context) {
 		} else {
 			c.JSON(http.StatusOK, gin.H{
 				"status":  http.StatusOK,
-				"message": "Already logged in",
+				"message": "You are already logged in",
 				"user": gin.H{
 					"ID": claims["sub"],
 				},
@@ -164,7 +165,7 @@ func CheckLoginStatus(c *gin.Context) {
 
 	c.JSON(http.StatusUnauthorized, gin.H{
 		"status":  http.StatusUnauthorized,
-		"message": "Not Logged In",
+		"message": "You are not Logged In",
 	})
 }
 
@@ -186,29 +187,25 @@ func Logout(c *gin.Context) {
 
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"status":  http.StatusUnauthorized,
-			"message": "Invalid token",
+			"message": "Invalid or expired token",
 		})
 		return
 	}
 
-	pipe := config.Client.Pipeline()
 	ctx := context.Background()
-
-	pipe.SAdd(ctx, "auth:tokens:blacklist", token)
-
 	expTime := claims["exp"].(float64) - float64(time.Now().Unix())
-	ttl := time.Duration(expTime) * time.Second
 
-	pipe.Expire(ctx, "auth:tokens:blacklist", ttl)
-
+	pipe := config.Client.Pipeline()
+	pipe.SetNX(ctx, `auth:blacklist:`+token, "", time.Duration(expTime)*time.Second)
 	_, err = pipe.Exec(ctx)
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status":  http.StatusInternalServerError,
 			"message": "Could not log out",
 		})
 
-		c.Abort()
+		return
 	}
 	c.SetCookie("Authorization", "", -1, "", "", true, true)
 

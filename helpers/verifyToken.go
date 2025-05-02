@@ -34,13 +34,13 @@ func VerifyJWT(tokenStr string) (jwt.MapClaims, error) {
 	}
 
 	ctx := context.Background()
-	res, err := config.Client.SIsMember(ctx, "auth:tokens:blacklist", tokenStr).Result()
+	res, err := config.Client.Exists(ctx, `auth:blacklist:`+tokenStr).Result()
 
 	if err != nil {
 		return nil, errors.New("internal server error")
 	}
 
-	if res {
+	if res == 1 {
 		return nil, errors.New("invalid token")
 	}
 	return claims, nil

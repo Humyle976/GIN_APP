@@ -2,7 +2,7 @@ package dto
 
 import models "gin_app/models"
 
-type userSignupResponse struct {
+type userSignupResponseDTO struct {
 	ID    uint   `json:"id"`
 	Name  string `json:"name"`
 	Email string `json:"email"`
@@ -17,8 +17,9 @@ type loginRequestDTO struct {
 func UserAuthLoginRequestDTO() *loginRequestDTO {
 	return &loginRequestDTO{}
 }
-func UserAuthSignUpResponseDTO(user models.User) *userSignupResponse {
-	return &userSignupResponse{
+
+func UserAuthSignUpResponseDTO(user models.User) *userSignupResponseDTO {
+	return &userSignupResponseDTO{
 		user.ID,
 		user.Username,
 		user.Email,
