@@ -10,5 +10,6 @@ func UserRouter(router *gin.Engine) {
 	users := router.Group("/users")
 	{
 		users.GET("/", controllers.Authenticate, controllers.GetAllUsers)
+		users.GET("/me/posts", controllers.Authenticate, controllers.GetPostsOfCurrentUser)
 	}
 }

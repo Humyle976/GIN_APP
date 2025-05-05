@@ -21,7 +21,6 @@ func main() {
 	routers.PostRouter(router)
 	routers.UserRouter(router)
 	routers.AuthRouter(router)
-
 	router.Run(os.Getenv("Address") + ":" + os.Getenv("PORT"))
 
 }
