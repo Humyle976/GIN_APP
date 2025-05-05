@@ -10,6 +10,12 @@ func PostRouter(router *gin.Engine) {
 	posts := router.Group("/posts")
 	{
 		posts.POST("/", controllers.Authenticate, controllers.CreateAPost)
-		posts.GET("/", controllers.Authenticate, controllers.GetPostsOfCurrentUser)
+		posts.DELETE("/:postId", controllers.Authenticate, controllers.DeleteAPost)
+
+		comments := posts.Group("/:postId/comments")
+		{
+			comments.POST("/", controllers.Authenticate, controllers.AddAComment)
+			comments.DELETE("/:commentId", controllers.Authenticate, controllers.DeleteAComment)
+		}
 	}
 }

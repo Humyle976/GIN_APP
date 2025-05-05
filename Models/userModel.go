@@ -10,5 +10,5 @@ type User struct {
 	Email    string `gorm:"uniqueIndex;not null" json:"email" binding:"required,email"`
 	Password string `gorm:"not null" json:"password" binding:"required,min=6"`
 	Age      uint8  `gorm:"not null" json:"age" binding:"required"`
-	Posts    []Post `gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL" json:"-"`
+	Posts    []Post `gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"-"`
 }
