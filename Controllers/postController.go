@@ -38,7 +38,7 @@ func DeleteAPost(c *gin.Context) {
 		} else {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"status":  http.StatusInternalServerError,
-				"message": "Error querying the post",
+				"message": "Internal Server Error",
 			})
 		}
 		return
@@ -76,6 +76,7 @@ func DeleteAPost(c *gin.Context) {
 		"message": "Post deleted successfully",
 	})
 }
+
 func CreateAPost(c *gin.Context) {
 	user, exists := c.Get("user")
 	if !exists {
