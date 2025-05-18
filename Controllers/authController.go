@@ -2,15 +2,19 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"gin_app/config"
 	"gin_app/dto"
 	"gin_app/helpers"
 	"gin_app/models"
+	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-resty/resty/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -72,7 +76,34 @@ func SignUp(c *gin.Context) {
 		})
 		return
 	}
+	token, err := helpers.GetTigerGraphToken()
 
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  http.StatusInternalServerError,
+			"message": "Couldn't create user",
+		})
+		return
+	}
+
+	client := resty.New()
+
+	url := fmt.Sprintf("%s/restpp/query/%s/InsertAUser", os.Getenv("TG_HOST"), os.Getenv("TG_GRAPH"))
+	resp, err := client.R().SetHeader("Authorization", "Bearer "+token).SetQueryParams(map[string]string{
+		"id":   strconv.FormatUint(uint64(user.ID), 10),
+		"name": user.Username,
+		"age":  strconv.FormatUint(uint64(user.Age), 10),
+	}).Get(url)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  http.StatusInternalServerError,
+			"message": "Couldn't create user",
+		})
+		return
+	}
+
+	log.Println(resp)
 	userSignUpResponseDTO := dto.UserSignUpResponseDTO(user)
 
 	c.JSON(http.StatusCreated, gin.H{

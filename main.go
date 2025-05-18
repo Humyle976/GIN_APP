@@ -13,6 +13,7 @@ func init() {
 	config.ConnectPostgres()
 	config.Migrate()
 	config.InitRedisClient()
+	config.ConnectTigerGraph()
 }
 func main() {
 

@@ -13,7 +13,7 @@ var DB *gorm.DB
 
 func ConnectPostgres() {
 	dsn := os.Getenv("POSTGRES_DSN")
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{TranslateError: true})
 	if err != nil {
 		log.Fatal("Couldn't connect to the database: ", err)
 	} else {
@@ -23,5 +23,5 @@ func ConnectPostgres() {
 }
 
 func Migrate() {
-	DB.AutoMigrate(&models.User{}, &models.Post{}, &models.Comment{})
+	DB.AutoMigrate(&models.User{}, &models.Post{}, &models.Comment{}, &models.Likes{})
 }
