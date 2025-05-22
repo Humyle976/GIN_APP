@@ -8,20 +8,21 @@ import (
 
 func PostRouter(router *gin.Engine) {
 	posts := router.Group("/posts")
+	posts.Use(controllers.Authenticate)
 	{
-		posts.POST("/", controllers.Authenticate, controllers.CreateAPost)
-		posts.DELETE("/:postId", controllers.Authenticate, controllers.DeleteAPost)
+		posts.POST("/", controllers.CreateAPost)
+		posts.DELETE("/:postId", controllers.DeleteAPost)
 
 		comments := posts.Group("/:postId/comments")
 		{
-			comments.POST("/", controllers.Authenticate, controllers.AddAComment)
-			comments.DELETE("/:commentId", controllers.Authenticate, controllers.DeleteAComment)
+			comments.POST("/", controllers.AddAComment)
+			comments.DELETE("/:commentId", controllers.DeleteAComment)
 		}
 		likes := posts.Group("/:postId/likes")
 		{
-			likes.POST("/", controllers.Authenticate, controllers.LikeAPost)
-			likes.DELETE("/", controllers.Authenticate, controllers.DislikeAPost)
-			likes.GET("/", controllers.Authenticate, controllers.GetAllLikes)
+			likes.POST("/", controllers.LikeAPost)
+			likes.DELETE("/", controllers.DislikeAPost)
+			likes.GET("/", controllers.GetAllLikes)
 		}
 	}
 }
