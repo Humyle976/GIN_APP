@@ -7,11 +7,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func CheckSrcDst(c *gin.Context) {
+func CheckSrcDst(c *gin.Context) (string, string, bool) {
 	user, ok := GetUserFromContext(c)
 
 	if !ok {
-		return
+		return "", "", false
 	}
 
 	userStr := strconv.FormatUint(uint64(user.ID), 10)
@@ -21,6 +21,7 @@ func CheckSrcDst(c *gin.Context) {
 			"status":  http.StatusBadRequest,
 			"message": "Can't send friend request to yourself",
 		})
-		return
+		return "", "", false
 	}
+	return userStr, dstStr, true
 }
