@@ -19,6 +19,7 @@ func UserRouter(router *gin.Engine) {
 		users.POST("/me/accept-request/:id", controllers.AcceptFriendRequest)
 		users.DELETE("/:id/friend-request", controllers.DeleteFriendRequest)
 		users.POST("/:id/block", controllers.BlockAUser)
+		users.DELETE("/:id/block", controllers.UnblockAUser)
 
 	}
 }
