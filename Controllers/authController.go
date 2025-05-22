@@ -7,7 +7,6 @@ import (
 	"gin_app/dto"
 	"gin_app/helpers"
 	"gin_app/models"
-	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -89,7 +88,7 @@ func SignUp(c *gin.Context) {
 	client := resty.New()
 
 	url := fmt.Sprintf("%s/restpp/query/%s/InsertAUser", os.Getenv("TG_HOST"), os.Getenv("TG_GRAPH"))
-	resp, err := client.R().SetHeader("Authorization", "Bearer "+token).SetQueryParams(map[string]string{
+	_, err = client.R().SetHeader("Authorization", "Bearer "+token).SetQueryParams(map[string]string{
 		"id":   strconv.FormatUint(uint64(user.ID), 10),
 		"name": user.Username,
 		"age":  strconv.FormatUint(uint64(user.Age), 10),
@@ -103,7 +102,6 @@ func SignUp(c *gin.Context) {
 		return
 	}
 
-	log.Println(resp)
 	userSignUpResponseDTO := dto.UserSignUpResponseDTO(user)
 
 	c.JSON(http.StatusCreated, gin.H{
