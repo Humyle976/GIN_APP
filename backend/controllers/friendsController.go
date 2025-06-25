@@ -104,7 +104,7 @@ func SendFriendRequest(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"status":  status,
+		"status":  http.StatusOK,
 		"message": "Friend request sent",
 	})
 }
@@ -150,7 +150,7 @@ func AcceptFriendRequest(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"status":  status,
+		"status":  http.StatusOK,
 		"message": "Friend request accepted",
 	})
 }
@@ -183,9 +183,7 @@ func DeclineFriendRequest(c *gin.Context) {
 		})
 		return
 	}
-	c.JSON(http.StatusNoContent, gin.H{
-		"status": http.StatusNoContent,
-	})
+	c.JSON(http.StatusNoContent, gin.H{})
 }
 
 func DeleteFriendRequest(c *gin.Context) {
@@ -216,9 +214,7 @@ func DeleteFriendRequest(c *gin.Context) {
 		})
 	}
 
-	c.JSON(http.StatusNoContent, gin.H{
-		"status":  http.StatusNoContent,
-	})
+	c.JSON(http.StatusNoContent, gin.H{})
 }
 
 func RemoveAFriend(c *gin.Context) {
@@ -251,9 +247,7 @@ func RemoveAFriend(c *gin.Context) {
 	}
 
 	if status == 204 {
-		c.JSON(http.StatusNoContent, gin.H{
-			"status" : http.StatusNoContent,
-		})
+		c.JSON(http.StatusNoContent, gin.H{})
 		return
 	}
 
@@ -280,17 +274,12 @@ func BlockAUser(c *gin.Context) {
 	status := result.(float64)
 
 	if status == 409 {
-		c.JSON(http.StatusConflict, gin.H{
-			"status":  http.StatusConflict,
-			"message": "User already blocked",
-		})
+		c.JSON(http.StatusConflict,gin.H{})
 		return
 	}
 
 	if status == 204 {
-		c.JSON(http.StatusNoContent, gin.H{
-			"status" : http.StatusNoContent,
-		})
+		c.JSON(http.StatusNoContent, gin.H{})
 	}
 }
 
