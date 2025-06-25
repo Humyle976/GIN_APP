@@ -22,7 +22,7 @@ func GetFriendsOfCurrentUser(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status":  http.StatusInternalServerError,
-			"message": "Couldn't send request",
+			"message": "Internal Server Error",
 		})
 		return
 	}
@@ -39,9 +39,7 @@ func GetFriendsOfCurrentUser(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"status": http.StatusOK,
-		"message": gin.H{
-			"Friend_List": friendlist,
-		},
+		"data": friendlist,
 	})
 }
 
@@ -220,7 +218,6 @@ func DeleteFriendRequest(c *gin.Context) {
 
 	c.JSON(http.StatusNoContent, gin.H{
 		"status":  http.StatusNoContent,
-		"message": "Request deleted successfully",
 	})
 }
 
@@ -254,7 +251,9 @@ func RemoveAFriend(c *gin.Context) {
 	}
 
 	if status == 204 {
-		c.JSON(http.StatusNoContent, gin.H{})
+		c.JSON(http.StatusNoContent, gin.H{
+			"status" : http.StatusNoContent,
+		})
 		return
 	}
 
@@ -289,7 +288,9 @@ func BlockAUser(c *gin.Context) {
 	}
 
 	if status == 204 {
-		c.JSON(http.StatusNoContent, gin.H{})
+		c.JSON(http.StatusNoContent, gin.H{
+			"status" : http.StatusNoContent,
+		})
 	}
 }
 

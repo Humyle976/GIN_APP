@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"gin_app/config"
+	"gin_app/helpers"
 	"gin_app/models"
 	"net/http"
 	"strconv"
@@ -43,20 +44,13 @@ func LikeAPost(c *gin.Context) {
 		return
 	}
 
-	user, exists := c.Get("user")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"status":  http.StatusUnauthorized,
-			"message": "You are not authorized to do that",
-		})
-		return
+	user, ok := helpers.GetUserFromContext(c)
+	if !ok {
+		return;
 	}
-
-	currentUser := user.(models.User)
 	like := &models.Likes{
 		PostID:   post.ID,
-		UserID:   currentUser.ID,
-		Username: currentUser.Username,
+		UserID:   user.ID,
 	}
 	err = config.DB.Model(&models.Likes{}).Create(&like).Error
 
@@ -78,7 +72,7 @@ func LikeAPost(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, gin.H{
 		"status":  http.StatusCreated,
-		"message": "Liked the Post",
+		"data": like,
 	})
 }
 
@@ -114,18 +108,14 @@ func DislikeAPost(c *gin.Context) {
 		return
 	}
 
-	user, exists := c.Get("user")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"status":  http.StatusUnauthorized,
-			"message": "You are not authorized to do that",
-		})
+	user, ok := helpers.GetUserFromContext(c)
+	if !ok {
 		return
 	}
 
-	currentUser := user.(models.User)
+
 	likes := &models.Likes{}
-	err = config.DB.Select("post_id", "user_id").Where("post_id = ? AND user_id = ?", post.ID, currentUser.ID).First(&likes).Error
+	err = config.DB.Select("post_id", "user_id").Where("post_id = ? AND user_id = ?", post.ID, user.ID).First(&likes).Error
 
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -160,18 +150,13 @@ func DislikeAPost(c *gin.Context) {
 	}
 	c.JSON(http.StatusNoContent, gin.H{
 		"status":  http.StatusNoContent,
-		"message": "deleted",
 	})
 
 }
 func GetAllLikes(c *gin.Context) {
-	_, exists := c.Get("user")
+	_, ok := helpers.GetUserFromContext(c)
 
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"status":  http.StatusUnauthorized,
-			"message": "You are not authorized to do that",
-		})
+	if !ok{
 		return
 	}
 

@@ -8,7 +8,7 @@ import (
 
 func PostRouter(router *gin.Engine) {
 	posts := router.Group("/posts")
-	posts.Use(controllers.Authenticate)
+	posts.Use(controllers.Authorization)
 	{
 		posts.POST("/", controllers.CreateAPost)
 		posts.DELETE("/:postId", controllers.DeleteAPost)

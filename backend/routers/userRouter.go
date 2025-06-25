@@ -8,7 +8,7 @@ import (
 
 func UserRouter(router *gin.Engine) {
 	users := router.Group("/users")
-	users.Use(controllers.Authenticate)
+	users.Use(controllers.Authorization)
 	{
 		users.GET("/", controllers.GetAllUsers)
 		users.GET("/me/posts", controllers.GetPostsOfCurrentUser)

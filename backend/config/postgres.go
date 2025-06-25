@@ -23,5 +23,6 @@ func ConnectPostgres() {
 }
 
 func Migrate() {
+	
 	DB.AutoMigrate(&models.User{}, &models.Post{}, &models.Comment{}, &models.Likes{})
 }

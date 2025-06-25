@@ -85,7 +85,6 @@ func AddAComment(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, gin.H{
 		"status":  http.StatusCreated,
-		"message": "Added comment",
 		"data":    addACommentResponseDTO,
 	})
 }

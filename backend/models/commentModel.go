@@ -1,7 +1,9 @@
 package models
 
+import "gorm.io/gorm"
+
 type Comment struct {
-	ID        uint   `gorm:"primaryKey;not null" json:"id" binding:"required"`
+	gorm.Model
 	UserID    uint   `json:"user_id" binding:"required" gorm:"not null"`
 	PostID    uint   `json:"post_id" binding:"required" gorm:"not null"`
 	Content   string `json:"comment" binding:"required" gorm:"not null"`
