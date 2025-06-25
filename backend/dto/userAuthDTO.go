@@ -2,30 +2,28 @@ package dto
 
 import models "gin_app/models"
 
-type userSignUpRequestDTO struct {
-	Name     string `json:"name" binding:"required"`
+type UserSignUpRequestDTO struct {
+	FirstName     string `json:"first_name" binding:"required"`
+	LastName     string `json:"last_name" binding:"required"`
+	DateOfBirth string `json:"dob" binding:"required"`
+	Gender string `json:"gender" binding:"required"`
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required,min=6"`
-	Age      uint8  `json:"age" binding:"required"`
+	CountryCode string `json:"country" binding:"required"`
 }
 
-func UserSignUpRequestDTO() *userSignUpRequestDTO {
-	return &userSignUpRequestDTO{}
-}
+
 
 type userSignUpResponseDTO struct {
 	ID    uint   `json:"id"`
-	Name  string `json:"name"`
-	Email string `json:"email"`
-	Age   uint8  `json:"age"`
+	FullName  string `json:"full_name"`
+
 }
 
 func UserSignUpResponseDTO(user models.User) *userSignUpResponseDTO {
 	return &userSignUpResponseDTO{
 		user.ID,
-		user.Username,
-		user.Email,
-		user.Age,
+		user.FirstName + " " + user.LastName,
 	}
 }
 
@@ -40,12 +38,12 @@ func UserLoginRequestDTO() *userLoginRequestDTO {
 
 type userLoginResponseDTO struct {
 	ID         uint   `json:"user_id"`
-	LoginField string `json:"Email/Username"`
+	FullName string `json:"full_name"`
 }
 
-func UserLoginResponseDTO(id uint, field string) *userLoginResponseDTO {
+func UserLoginResponseDTO(id uint, FullName string) *userLoginResponseDTO {
 	return &userLoginResponseDTO{
 		ID:         id,
-		LoginField: field,
+		FullName: FullName,
 	}
 }

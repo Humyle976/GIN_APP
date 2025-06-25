@@ -43,5 +43,7 @@ func VerifyJWT(tokenStr string) (jwt.MapClaims, error) {
 	if res == 1 {
 		return nil, errors.New("invalid token")
 	}
+
+
 	return claims, nil
 }

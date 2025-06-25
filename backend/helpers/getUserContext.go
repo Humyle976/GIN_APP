@@ -1,20 +1,20 @@
 package helpers
 
 import (
-	"gin_app/models"
+	"gin_app/dto"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
-func GetUserFromContext(c *gin.Context) (models.User, bool) {
+func GetUserFromContext(c *gin.Context) (dto.UserContext, bool) {
 	user, exists := c.Get("user")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"status":  http.StatusUnauthorized,
 			"message": "You are not authorized to do that",
 		})
-		return models.User{}, false
+		return dto.UserContext{}, false
 	}
-	return user.(models.User), true
+	return user.(dto.UserContext), true
 }

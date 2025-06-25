@@ -1,11 +1,17 @@
 package controllers
 
 import (
+	"fmt"
 	"gin_app/config"
 	"gin_app/dto"
+	"gin_app/helpers"
 	"gin_app/models"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -44,17 +50,11 @@ func DeleteAPost(c *gin.Context) {
 		return
 	}
 
-	user, exists := c.Get("user")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"status":  http.StatusUnauthorized,
-			"message": "You are not authorized to do that",
-		})
+	currentUser, ok := helpers.GetUserFromContext(c)
+	if !ok {
 		return
 	}
-
-	currentUser := user.(models.User)
-
+	
 	if post.UserID != currentUser.ID {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"status":  http.StatusUnauthorized,
@@ -63,7 +63,13 @@ func DeleteAPost(c *gin.Context) {
 		return
 	}
 
-	if err := config.DB.Delete(&post).Error; err != nil {
+
+	relativePath := strings.TrimLeft(post.FileURL, "/");
+	cleanPath := filepath.Clean(relativePath)
+	_ = os.Remove(cleanPath)
+	
+	err = config.DB.Unscoped().Delete(&post).Error
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status":  http.StatusInternalServerError,
 			"message": "Failed to delete post",
@@ -71,71 +77,124 @@ func DeleteAPost(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"status":  http.StatusOK,
-		"message": "Post deleted successfully",
+	c.JSON(http.StatusNoContent, gin.H{
+		"status":  http.StatusNoContent,
 	})
 }
 
 func CreateAPost(c *gin.Context) {
-	user, exists := c.Get("user")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"status":  http.StatusUnauthorized,
-			"message": "You are not authorized to do that",
-		})
+	user, ok := helpers.GetUserFromContext(c)
+	if !ok {
 		return
 	}
 
-	postCreateRequestDTO := dto.PostCreateRequestDTO()
-
-	err := c.ShouldBindJSON(postCreateRequestDTO)
-	if err != nil {
+	text := c.PostForm("text")
+	if text == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"status":  http.StatusBadRequest,
-			"message": "Invalid JSON data",
+			"message": "Post must contain some text",
 		})
 		return
 	}
-	currentUser := user.(models.User)
-	post := models.Post{
-		UserID:  currentUser.ID,
-		Content: postCreateRequestDTO.Content,
+	if len(text) > 400 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  http.StatusBadRequest,
+			"message": "Text must be less than 400 characters",
+		})
+		return
 	}
 
-	err = config.DB.Create(&post).Error
-	if err != nil {
+	visibility := c.DefaultPostForm("visibility", "public")
+	var fileURL string
+
+	file, header, err := c.Request.FormFile("file")
+	if err == nil {
+		defer file.Close()
+
+		ext := strings.ToLower(filepath.Ext(header.Filename))
+		allowed := map[string]bool{
+			".jpg":  true,
+			".jpeg": true,
+			".png":  true,
+			".gif":  true,
+			".webp": true,
+			".mp4":  true,
+			".mov":  true,
+			".avi":  true,
+			".webm": true,
+		}
+		if !allowed[ext] {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status":  http.StatusBadRequest,
+				"message": "Unsupported file type",
+			})
+			return
+		}
+
+		fileName := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
+		savePath := filepath.Join("uploads", fileName)
+
+		err := c.SaveUploadedFile(header, savePath)
+		
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status":  http.StatusInternalServerError,
+				"message": "Internal Server Error",
+			})
+			return
+		}
+
+		fileURL = "/uploads/" + fileName
+
+	} else if err != http.ErrMissingFile {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  http.StatusBadRequest,
+			"message": "Error reading file",
+		})
+		return
+	}
+
+	post := models.Post{
+		UserID:     user.ID,
+		Content:    text,
+		FileURL:    fileURL,
+		Visibility: models.Visibility(visibility),
+	}
+
+	if err := config.DB.Create(&post).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status":  http.StatusInternalServerError,
-			"message": "Couldn't create post",
+			"message": "Internal Server Error",
 		})
 		return
 	}
+	postObj := dto.PostWithUser{
+		PostID: post.ID,
+		Content: post.Content,
+		UserID: post.UserID,
+		Fullname: user.Fullname,
+		FileURL: post.FileURL,
+		CreatedAt: post.CreatedAt,
+		Likes: 0,
+		Comments: 0,
+		IsOwner: true,
 
-	postCreateResponseDTO := dto.PostCreateResponseDTO(currentUser, post)
-
-	c.JSON(http.StatusCreated, gin.H{
-		"status":  http.StatusCreated,
-		"message": "Post created",
-		"data":    postCreateResponseDTO,
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"status": http.StatusOK,
+		"post":    postObj,
 	})
 }
 
-func GetPostsOfCurrentUser(c *gin.Context) {
-	user, exists := c.Get("user")
 
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"status":  http.StatusUnauthorized,
-			"message": "You are not authorized to do that",
-		})
+func GetPostsOfCurrentUser(c *gin.Context) {
+	user, ok := helpers.GetUserFromContext(c)
+	if !ok {
 		return
 	}
 
-	currentUser := user.(models.User)
-
 	var posts []models.Post
-	err := config.DB.Where("user_id = ?", currentUser.ID).Find(&posts).Error
+	err := config.DB.Where("user_id = ?", user.ID).Find(&posts).Error
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -144,8 +203,8 @@ func GetPostsOfCurrentUser(c *gin.Context) {
 		})
 		return
 	}
-
-	postGetResponseDTO := dto.PostGetResponseDTO(posts, currentUser)
+	
+	postGetResponseDTO := dto.PostGetResponseDTO(posts, user)
 	c.JSON(http.StatusOK, gin.H{
 		"status": http.StatusOK,
 		"data":   postGetResponseDTO,

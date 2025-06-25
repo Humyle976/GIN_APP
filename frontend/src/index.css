@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+@theme {
+  --color-mint-500: oklch(0.72 0.11 178);
+  --color-dark-gray: oklch(0.1822 0 0);
+  --color-dark-purp: oklch(0.3175 0.1233 356.29);
+}
+
+input::-ms-reveal {
+  display: none;
+}
