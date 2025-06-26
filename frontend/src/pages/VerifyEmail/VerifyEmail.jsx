@@ -1,35 +1,24 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import ErrorPage from "../../globals/ErrorPage";
 import { Box, Button, Typography } from "@mui/material";
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import { verifyCode } from "../../services/verifyCode";
 import { GlobalLoader } from "../../globals/GlobalLoader";
+import { checkTokenExists } from "../../services/checkTokenExists";
+import { resendCodeFn } from "../../services/resendCodeFn";
 
-async function checkToken() {
-  try {
-    const res = await axios.get("http://localhost:8000/auth/verify", {
-      withCredentials: true,
-    });
-    return res.data;
-  } catch (err) {
-    const status = err.response?.status;
-    let message = "Unexpected error occurred.";
-
-    if (status === 404 || status === 500 || status === 400) {
-      message = err.response.data.message;
-    }
-
-    const error = new Error(message);
-    error.status = status ?? "";
-    throw error;
-  }
-}
 function VerifyEmail() {
+  const [code, setCode] = useState(Array(6).fill(""));
+  const [codeError, setCodeError] = useState("");
+  const [postError, setPostError] = useState(null);
+
+  const [cooldown, setCooldown] = useState(0);
+  const intervalRef = useRef(null);
+
   const navigate = useNavigate();
   const inputRefs = useRef([]);
-  const buttonRef = useRef();
+  const verifyButtonRef = useRef();
 
   const {
     isError,
@@ -37,7 +26,7 @@ function VerifyEmail() {
     isPending: isPendingQuery,
   } = useQuery({
     queryKey: ["verify-email"],
-    queryFn: checkToken,
+    queryFn: checkTokenExists,
     retry: false,
     staleTime: Infinity,
   });
@@ -45,7 +34,7 @@ function VerifyEmail() {
   const { mutate, isPending } = useMutation({
     mutationFn: verifyCode,
     onMutate: () => {
-      buttonRef.current.disabled = true;
+      verifyButtonRef.current.disabled = true;
     },
     onSuccess: (data) => {
       setPostError(null);
@@ -65,20 +54,36 @@ function VerifyEmail() {
       }
     },
     onSettled: () => {
-      buttonRef.current.disabled = false;
+      verifyButtonRef.current.disabled = false;
     },
   });
-  const [code, setCode] = useState(Array(6).fill(""));
-  const [codeError, setCodeError] = useState("");
-  const [postError, setPostError] = useState(null);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      inputRefs.current[0]?.focus();
-    }, 0);
-
-    return () => clearTimeout(timer);
-  }, []);
+  const { mutate: mutateResend, isPending: isPendingReset } = useMutation({
+    mutationFn: resendCodeFn,
+    onSuccess: () => {
+      setCooldown(60);
+      intervalRef.current = setInterval(() => {
+        setCooldown((prev) => {
+          if (prev <= 1) {
+            clearInterval(intervalRef.current);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    },
+    onError: (err) => {
+      const status = err.response?.data.status;
+      const message = err.response?.data.message;
+      if (status === 404 || status === 500) {
+        setPostError({ status, message });
+      } else if (status === 425) {
+        setCodeError(message);
+      } else {
+        setPostError("Unknown Error Occured!");
+      }
+    },
+  });
 
   function handleChange(index, e) {
     const value = e.target.value;
@@ -121,7 +126,6 @@ function VerifyEmail() {
     }
   }
 
-  function handleResend() {}
   if (postError) {
     return (
       <ErrorPage
@@ -171,31 +175,38 @@ function VerifyEmail() {
                 />
               ))}
             </div>
-            <div className="flex justify-end">
-              <button
-                className="text-cyan-300 cursor-pointer"
-                onClick={handleResend}
-              >
-                Resend?
-              </button>
+
+            <div className="flex w-full">
+              {codeError && (
+                <div className="w-1/2 text-red-500 text-md font-medium">
+                  {codeError}
+                </div>
+              )}
+              <div className="flex w-full justify-end">
+                <button
+                  className={`text-cyan-300 ${
+                    cooldown > 0
+                      ? "opacity-50 cursor-not-allowed"
+                      : "cursor-pointer"
+                  }`}
+                  onClick={mutateResend}
+                  disabled={cooldown > 0}
+                >
+                  {cooldown > 0 ? `Resend again in ${cooldown}s` : "Resend?"}
+                </button>
+              </div>
             </div>
           </div>
-
-          {codeError && (
-            <div className="text-red-500 text-center font-medium">
-              {codeError}
-            </div>
-          )}
         </Box>
         <Button
           variant="contained"
           className="!mt-4 !bg-gradient-to-r !from-purple-700 !to-pink-600 hover:!from-pink-600 hover:!to-purple-700 !text-white !font-semibold !py-3 !rounded-xl !text-base !transition-all"
           onClick={() => mutate(code)}
-          ref={buttonRef}
+          ref={verifyButtonRef}
         >
           Verify
         </Button>
-        {isPending && <GlobalLoader />}
+        {(isPending || isPendingReset) && <GlobalLoader />}
       </Box>
     </Box>
   );
