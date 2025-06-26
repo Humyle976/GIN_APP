@@ -1,9 +1,11 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import ErrorPage from "../../globals/ErrorPage";
 import { Box, Button, Typography } from "@mui/material";
 import { useState, useEffect, useRef } from "react";
+import { verifyCode } from "../../services/verifyCode";
+import { GlobalLoader } from "../../globals/GlobalLoader";
 
 async function checkToken() {
   try {
@@ -26,19 +28,50 @@ async function checkToken() {
 }
 function VerifyEmail() {
   const navigate = useNavigate();
-  const { isError, error, isLoading } = useQuery({
+  const inputRefs = useRef([]);
+  const buttonRef = useRef();
+
+  const {
+    isError,
+    error,
+    isPending: isPendingQuery,
+  } = useQuery({
     queryKey: ["verify-email"],
     queryFn: checkToken,
     retry: false,
     staleTime: Infinity,
   });
 
+  const { mutate, isPending } = useMutation({
+    mutationFn: verifyCode,
+    onMutate: () => {
+      buttonRef.current.disabled = true;
+    },
+    onSuccess: (data) => {
+      setPostError(null);
+      if (data.status === 201) {
+        navigate("/home", { replace: true });
+      }
+    },
+    onError: (err) => {
+      const status = err.response?.data.status;
+      const message = err.response?.data.message;
+      if (status === 400) {
+        setCodeError(message);
+      } else if (status === 404 || status === 500) {
+        setPostError({ status, message });
+      } else {
+        setPostError("Unknown Error Occured!");
+      }
+    },
+    onSettled: () => {
+      buttonRef.current.disabled = false;
+    },
+  });
   const [code, setCode] = useState(Array(6).fill(""));
   const [codeError, setCodeError] = useState("");
   const [postError, setPostError] = useState(null);
 
-  const inputRefs = useRef([]);
-  const buttonRef = useRef();
   useEffect(() => {
     const timer = setTimeout(() => {
       inputRefs.current[0]?.focus();
@@ -88,41 +121,7 @@ function VerifyEmail() {
     }
   }
 
-  async function handleSubmit() {
-    const codeInt = parseInt(code.join(""), 10);
-    buttonRef.current.disabled = true;
-    try {
-      const res = await axios.post(
-        "http://localhost:8000/auth/verify",
-        {
-          code: codeInt,
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-          withCredentials: true,
-        }
-      );
-      setPostError(null);
-      if (res.data.status === 201) {
-        navigate("/home", { replace: true });
-      }
-    } catch (err) {
-      const status = err.response?.data.status;
-      const message = err.response?.data.message;
-      if (status === 400) {
-        setCodeError(message);
-      } else if (status === 404 || status === 500) {
-        setPostError({ status, message });
-      } else {
-        setPostError("Unknown Error Occured!");
-      }
-    }
-    buttonRef.current.disabled = false;
-  }
-
-  if (isLoading) return <div></div>;
+  function handleResend() {}
   if (postError) {
     return (
       <ErrorPage
@@ -137,6 +136,7 @@ function VerifyEmail() {
     );
   }
 
+  if (isPendingQuery) return <div></div>;
   return (
     <Box className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-gray-950 via-black to-purple-950 p-6">
       <Typography
@@ -155,20 +155,30 @@ function VerifyEmail() {
           Enter the 6-digit code we sent to your email.
         </Typography>
         <Box className="flex flex-col gap-3">
-          <div className="flex justify-center gap-3">
-            {code.map((digit, index) => (
-              <input
-                key={index}
-                type="text"
-                maxLength="1"
-                value={digit}
-                onChange={(e) => handleChange(index, e)}
-                onKeyDown={(e) => handleKeyDown(index, e)}
-                onPaste={handlePaste}
-                ref={(el) => (inputRefs.current[index] = el)}
-                className="w-14 h-14 text-center text-2xl text-black bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-md transition-all"
-              />
-            ))}
+          <div className="flex flex-col gap-5">
+            <div className="flex justify-center gap-3">
+              {code.map((digit, index) => (
+                <input
+                  key={index}
+                  type="text"
+                  maxLength="1"
+                  value={digit}
+                  onChange={(e) => handleChange(index, e)}
+                  onKeyDown={(e) => handleKeyDown(index, e)}
+                  onPaste={handlePaste}
+                  ref={(el) => (inputRefs.current[index] = el)}
+                  className="w-14 h-14 text-center text-2xl text-black bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-md transition-all"
+                />
+              ))}
+            </div>
+            <div className="flex justify-end">
+              <button
+                className="text-cyan-300 cursor-pointer"
+                onClick={handleResend}
+              >
+                Resend?
+              </button>
+            </div>
           </div>
 
           {codeError && (
@@ -180,11 +190,12 @@ function VerifyEmail() {
         <Button
           variant="contained"
           className="!mt-4 !bg-gradient-to-r !from-purple-700 !to-pink-600 hover:!from-pink-600 hover:!to-purple-700 !text-white !font-semibold !py-3 !rounded-xl !text-base !transition-all"
-          onClick={handleSubmit}
+          onClick={() => mutate(code)}
           ref={buttonRef}
         >
           Verify
         </Button>
+        {isPending && <GlobalLoader />}
       </Box>
     </Box>
   );
